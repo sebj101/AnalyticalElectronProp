@@ -10,7 +10,7 @@ HarmonicTrap: Harmonic magnetic field providing trapping field
 """
 
 import numpy as np
-from BaseTrap import BaseTrap
+from src.BaseTrap import BaseTrap
 import scipy.constants as sc
 
 
