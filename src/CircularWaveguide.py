@@ -1,5 +1,6 @@
 from scipy.special import j1, jvp
 import numpy as np
+import scipy.constants as sc
 
 
 class CircularWaveguide:
@@ -117,3 +118,20 @@ class CircularWaveguide:
         rho = np.sqrt(pos[0]**2 + pos[1]**2)
         phi = np.arctan2(pos[1], pos[0])
         return self.EFieldTE11_2(rho, phi, A)
+
+    def CalcTE11Impedance(self, omega):
+        """
+        Calculate the impedance of the TE11 mode
+
+        Parameters:
+        ----------
+        omega: float representing the angular frequency of the mode in rad/s
+
+        Returns:
+        -------
+        float representing the impedance of the mode in Ohms
+        """
+        k = omega / sc.c
+        kc = 1.841 / self.wgR
+        betaMode = np.sqrt(k**2 - kc**2)
+        return k * np.sqrt(sc.mu_0 / sc.epsilon_0) / betaMode
