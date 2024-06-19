@@ -14,19 +14,6 @@ class BaseTrap(ABC):
     Base class for electron traps
     """
 
-    __zMax = 0.0
-    __omega0 = 0.0
-
-    def GetZMax(self):
-        """
-        Get the maximum axial position
-
-        Parameters:
-        ----------
-        pitchAngle: float representing the pitch angle in radians
-        """
-        return self.__zMax
-
     @abstractmethod
     def CalcZMax(self, pitchAngle):
         """
@@ -48,34 +35,27 @@ class BaseTrap(ABC):
         v: float representing the speed of the electron in m/s
         """
 
-    def GetOmega0(self, v):
+    @abstractmethod
+    def CalcOmega0(self, v, pitchAngle):
         """
         Get the average cyclotron frequency
 
         Parameters:
         ----------
         v: float representing the speed of the electron in m/s
-        """
-        return self.__omega0
-
-    @abstractmethod
-    def CalcOmega0(self, v):
-        """
-        Get the average cyclotron frequency
-
-        Parameters:
-        ----------
-        v: float representing the speed of the electron in m/s
+        pitchAngle: float representing the pitch angle in radians
         """
 
     @abstractmethod
-    def GetBzTime(self, t):
+    def GetBzTime(self, t, pitchAngle, v):
         """
         Get the axial component of the magnetic field at a given time
 
         Parameters:
         ----------
         t: float representing the time in seconds
+        pitchAngle: float representing the pitch angle in radians
+        v: float representing the speed of the electron in m/s
         """
 
     @abstractmethod
@@ -89,7 +69,7 @@ class BaseTrap(ABC):
         """
 
     @abstractmethod
-    def GetCyclotronPhase(self, t):
+    def GetCyclotronPhase(self, t, v, pitchAngle):
         """
         Get the phase of the cyclotron motion
 
@@ -99,11 +79,13 @@ class BaseTrap(ABC):
         """
 
     @abstractmethod
-    def GetZPosTime(self, t):
+    def GetZPosTime(self, t, v, pitchAngle):
         """
         Get the axial position of the electron at a given time
 
         Parameters:
         ----------
         t: float representing the time in seconds
+        v: float representing the speed of the electron in m/s
+        pitchAngle: float representing the pitch angle in radians
         """
