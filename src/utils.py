@@ -6,6 +6,7 @@ This file contains utility functions
 
 import numpy as np
 import scipy.constants as sc
+from scipy.signal import butter, lfilter
 
 
 def EquivalentMagneticMoment(p0, pitchAngle, B0):
@@ -62,3 +63,23 @@ def CyclotronFrequency(B: float, gamma: float):
     gamma: float representing the Lorentz factor of the electron
     """
     return sc.e * B / (2 * np.pi * gamma * sc.m_e)
+
+
+def CreateButterLowPass(cutoff: float, fs: float, order: int):
+    '''Create a low pass Butterworth filter
+
+    cutoff: float representing the cutoff frequency
+    fs: float representing the sample rate
+    order: int representing the order of the filter'''
+    return butter(order, cutoff, fs=fs, btype='lowpass')
+
+
+def ButterLowPassFilter(data: np.ndarray, cutoff: float, fs: float, order: int):
+    '''Apply a low pass Butterworth
+
+    data: numpy array representing the data to be filtered
+    cutoff: float representing the cutoff frequency
+    fs: float representing the sample rate
+    order: int representing the order of the filter'''
+    b, a = CreateButterLowPass(cutoff, fs, order)
+    return lfilter(b, a, data)
