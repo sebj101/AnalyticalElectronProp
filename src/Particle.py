@@ -13,7 +13,7 @@ class Particle:
     Class representing a particle with mass, charge and initial kinetic energy
     """
 
-    def __init__(self, ke, q=sc.e, mass=sc.m_e) -> None:
+    def __init__(self, ke, q=-sc.e, mass=sc.m_e) -> None:
         """
         Constructor for Particle class
 
