@@ -281,7 +281,7 @@ class BathtubTrap(BaseTrap):
                       (tPeriodic > t2) & (tPeriodic < t3), tPeriodic > t3]
         choices = [vz0 * tPeriodic - self.__L1 / 2,
                    zMax * np.sin(wa * (tPeriodic - t1)) + self.__L1 / 2,
-                   -vz0 * (tPeriodic - t2) + self._L1 / 2,
+                   -vz0 * (tPeriodic - t2) + self.__L1 / 2,
                    -zMax * np.sin(wa * (tPeriodic - t3)) - self.__L1 / 2]
         return np.select(conditions, choices, default=0.0)
 
