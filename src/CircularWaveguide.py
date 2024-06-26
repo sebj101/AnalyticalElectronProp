@@ -142,7 +142,7 @@ class CircularWaveguide:
 
         Returns:
         -------
-        float representing the required normalisation factor
+        float: The required normalisation factor
         """
 
         xArray = np.linspace(-self.wgR, self.wgR, 100)
