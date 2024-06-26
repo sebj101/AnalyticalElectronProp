@@ -10,10 +10,11 @@ import scipy.constants as sc
 
 class Particle:
     """
-    Class representing a particle with mass, charge and initial kinetic energy
+    Class representing a particle with mass, charge, initial kinetic energy and
+    pitch angle
     """
 
-    def __init__(self, ke, q=-sc.e, mass=sc.m_e) -> None:
+    def __init__(self, ke, q=-sc.e, mass=sc.m_e, pitchAngle=np.pi/2) -> None:
         """
         Constructor for Particle class
 
@@ -22,10 +23,12 @@ class Particle:
         ke: float representing the initial kinetic energy in eV
         q: float representing the charge of the particle in C
         mass: float representing the mass of the particle in kg
+        pitchAngle: float representing the pitch angle of the particle in radians
         """
         self.__ke = ke
         self.__q = q
         self.__mass = mass
+        self.__pitchAngle = pitchAngle
 
     def GetGamma(self):
         """
@@ -50,3 +53,9 @@ class Particle:
         Get the momentum of the particle
         """
         return self.GetGamma() * self.__mass * self.GetSpeed()
+
+    def GetPitchAngle(self):
+        """
+        Get the pitch angle of the particle in radians
+        """
+        return self.__pitchAngle
