@@ -135,3 +135,22 @@ class CircularWaveguide:
         kc = 1.841 / self.wgR
         betaMode = np.sqrt(k**2 - kc**2)
         return k * np.sqrt(sc.mu_0 / sc.epsilon_0) / betaMode
+
+    def CalcNormalisationFactor(self):
+        """
+        Calculate the required normalisation factor for the waveguide
+
+        Returns:
+        -------
+        float representing the required normalisation factor
+        """
+
+        xArray = np.linspace(-self.wgR, self.wgR, 100)
+        yArray = np.linspace(-self.wgR, self.wgR, 100)
+        E1Integral = 0.0
+        for i in range(len(xArray)):
+            for j in range(len(yArray)):
+                E1Integral += np.linalg.norm(self.EFieldTE11Pos_1(np.array(
+                    [xArray[i], yArray[j], 0]), 1))**2 * (xArray[1] - xArray[0]) * (yArray[1] - yArray[0])
+
+        return 1 / np.sqrt(E1Integral)
