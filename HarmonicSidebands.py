@@ -50,6 +50,11 @@ L0 = 0.2  # m
 # Define trap
 trap = traps.HarmonicTrap(B0, L0)
 
+array1 = np.array([[1, 1, 1], [2, 2, 2], [7, 8, 9], [4, 4, 4]])  # Shape (3, 3)
+array2 = np.array([[1, 1, 1], [2, 2, 2], [3, 2, 1], [4, 4, 4]])  # Shape (3, 3)
+dot_product = np.einsum('ij,ij->i', array1, array2)
+print(dot_product)
+
 # Plot pitch angle against zMax
 pitchAngleArray = np.linspace(86.0, 90.0, 50) * np.pi / 180.0
 zMaxArray = trap.CalcZMax(pitchAngleArray)
@@ -76,18 +81,18 @@ for iP, pitchAngleInit in enumerate(pitchAngleArray):
     pAngleTime = utils.PitchAngleFromField(BzTime, p0, mu)
     phases = trap.GetCyclotronPhase(teSolutions, v0, pitchAngleInit)
     eVels = utils.ElectronVelocity(v0, pAngleTime, phases)
-    ePos = np.array([1e-5 * np.ones(len(timeFine)), np.zeros(
-        len(timeFine)), trap.GetZPosTime(teSolutions, v0, pitchAngleInit)])
+    ePos = np.array([1e-5 * np.ones(len(teSolutions)), np.zeros(
+        len(teSolutions)), trap.GetZPosTime(teSolutions, v0, pitchAngleInit)])
     posFixed = np.array([1e-5, 0.0, 0.0])
 
     # Now do some actual waveguide calculations
     Z = wg.CalcTE11Impedance(trap.CalcOmega0(v0, pitchAngleInit))
     # Calculate an amplitude
-    A1 = -sc.e * np.dot(wg.EFieldTE11Pos_1(posFixed,
-                        normFactor1), eVels) * -Z / 2
-    A2 = -sc.e * np.dot(wg.EFieldTE11Pos_2(posFixed,
-                        normFactor2), eVels) * -Z / 2
-    # Now multiply by local oscillator
+    wgField1 = wg.EFieldTE11Pos_1(ePos, normFactor1)
+    wgField2 = wg.EFieldTE11Pos_2(ePos, normFactor1)
+    A1 = -sc.e * np.einsum('ij,ij->j', wgField1, eVels) * -Z / 2
+    A2 = -sc.e * np.einsum('ij,ij->j', wgField2, eVels) * -Z / 2
+    print(f"A1 shape: {A1.shape}")
     fLO = trap.CalcOmega0(v0, pitchAngleInit) / (2 * np.pi) - \
         (1 / sampleCoarsePeriod) / 4
     A1 *= utils.LOOutput(timeFine, fLO)
