@@ -198,14 +198,14 @@ class BathtubTrap(BaseTrap):
         T = 2 * t2
 
         tPeriodic = t % T
-        if tPeriodic < t1:
-            return self.__B0
-        elif tPeriodic > t1 and tPeriodic < t2:
-            return self.__B0 * (1 + zMax**2 / (2 * self.__L0**2) - zMax**2 / (2 * self.__L0**2) * np.cos(2 * wa * (tPeriodic - t1)))
-        elif tPeriodic > t2 and tPeriodic < t3:
-            return self.__B0
-        else:
-            return self.__B0 * (1 + zMax**2 / (2 * self.__L0**2) - zMax**2 / (2 * self.__L0**2) * np.cos(2 * wa * (tPeriodic - t3)))
+        conditions = [tPeriodic < t1, (tPeriodic > t1) & (tPeriodic < t2),
+                      (tPeriodic > t2) & (tPeriodic < t3), tPeriodic > t3]
+        choices = [self.__B0,
+                   self.__B0 * (1 + zMax**2 / (2 * self.__L0**2) - zMax**2 /
+                                (2 * self.__L0**2) * np.cos(2 * wa * (tPeriodic - t1))),
+                   self.__B0,
+                   self.__B0 * (1 + zMax**2 / (2 * self.__L0**2) - zMax**2 / (2 * self.__L0**2) * np.cos(2 * wa * (tPeriodic - t3)))]
+        return np.select(conditions, choices, default=0.0)
 
     def GetBzPosition(self, pos):
         """
@@ -216,14 +216,57 @@ class BathtubTrap(BaseTrap):
         pos: numpy array representing the position in metres
         """
         z = pos[2]
-        if z < -self.__L1 / 2:
-            return self.__B0 * (1 + (z + self.__L1 / 2)**2 / self.__L0**2)
-        elif z > -self.__L1 / 2 and z < self.__L1 / 2:
-            return self.__B0
-        else:
-            return self.__B0 * (1 + (z - self.__L1 / 2)**2 / self.__L0**2)
+        conditions = [z < -self.__L1 / 2,
+                      (z > -self.__L1 / 2) & (z < self.__L1 / 2), z > self.__L1 / 2]
+        choices = [self.__B0 * (1 + (z + self.__L1 / 2)**2 / self.__L0**2),
+                   self.__B0, self.__B0 * (1 + (z - self.__L1 / 2)**2 / self.__L0**2)]
+        return np.select(conditions, choices, default=0.0)
+
+    def GetCyclotronPhase(self, t, v, pitchAngle):
+        """
+        Get the phase of the cyclotron motion
+
+        Parameters:
+        ----------
+        t: float representing the time in seconds
+        v: float representing the speed of the electron in m/s
+        pitchAngle: float representing the pitch angle in radians
+        """
+        zMax = self.CalcZMax(pitchAngle)
+        wa = v * np.sin(pitchAngle) / self.__L0
+        t0 = 0.0
+        t1 = self.__L1 / (v * np.cos(pitchAngle))
+        t2 = t1 + np.pi / wa
+        t3 = t1 + t2
+        T = 2 * t2
+
+        conditions = [t % T < t1, (t % T > t1) & (t % T < t2),
+                      (t % T > t2) & (t % T < t3), t % T > t3]
+        choices = [t % T, (t % T) + zMax**2 * ((t % T) - t1) / (2 * self.__L0**2) - zMax**2 * np.sin(2 * wa * ((t % T) - t1)) / (4 * wa * self.__L0**2),
+                   (t2 - t1) * zMax**2 / (2 * self.__L0**2) + (t % T),
+                   (t % T) + (t2 - t1 - t3 + (t % T)) * zMax**2 / (2 * self.__L0**2) - zMax**2 * np.sin(2 * wa * ((t % T) - t3)) / (4 * wa * self.__L0**2)]
+
+        beta = v / sc.c
+        gamma = 1 / np.sqrt(1 - beta**2)
+        prefactor = sc.e * self.__B0 / (sc.m_e * gamma)
+
+        # Account for completed axial oscillations
+        nAxialCycles = np.floor(t / T)
+        additionalTerm = (T + zMax**2 * np.pi /
+                          (wa * self.__L0**2)) * nAxialCycles
+
+        return (np.select(conditions, choices, default=0.0) + additionalTerm) * prefactor
 
     def GetZPosTime(self, t, v, pitchAngle):
+        """
+        Get the axial position of the electron at a given time
+
+        Parameters:
+        ----------
+        t: float representing the time in seconds
+        v: float representing the speed of the electron in m/s
+        pitchAngle: float representing the pitch angle in radians
+        """
         zMax = self.CalcZMax(pitchAngle)
         wa = v * np.sin(pitchAngle) / self.__L0
         t0 = 0.0
@@ -234,11 +277,38 @@ class BathtubTrap(BaseTrap):
         vz0 = v * np.cos(pitchAngle)
 
         tPeriodic = t % T
-        if tPeriodic < t1:
-            return vz0 * tPeriodic - self.__L1 / 2
-        elif tPeriodic > t1 and tPeriodic < t2:
-            return zMax * np.sin(wa * (tPeriodic - t1)) + self.__L1 / 2
-        elif tPeriodic > t2 and tPeriodic < t3:
-            return -vz0 * (tPeriodic - t2) + self._L1 / 2
-        else:
-            return -zMax * np.sin(wa * (tPeriodic - t3)) - self.__L1 / 2
+        conditions = [tPeriodic < t1, (tPeriodic > t1) & (tPeriodic < t2),
+                      (tPeriodic > t2) & (tPeriodic < t3), tPeriodic > t3]
+        choices = [vz0 * tPeriodic - self.__L1 / 2,
+                   zMax * np.sin(wa * (tPeriodic - t1)) + self.__L1 / 2,
+                   -vz0 * (tPeriodic - t2) + self._L1 / 2,
+                   -zMax * np.sin(wa * (tPeriodic - t3)) - self.__L1 / 2]
+        return np.select(conditions, choices, default=0.0)
+
+    def GetOmegaTime(self, t, pitchAngle, v):
+        """
+        Get the axial frequency of the electron's motion at a given time
+
+        Parameters:
+        ----------
+        t: float representing the time in seconds
+        pitchAngle: float representing the pitch angle in radians
+        v: float representing the speed of the electron in m/s
+        """
+        zMax = self.CalcZMax(pitchAngle)
+        wa = v * np.sin(pitchAngle) / self.__L0
+        t0 = 0.0
+        t1 = self.__L1 / (v * np.cos(pitchAngle))
+        t2 = t1 + np.pi / wa
+        t3 = t1 + t2
+        T = 2 * t2
+
+        tPeriodic = t % T
+        conditions = [tPeriodic < t1, (tPeriodic > t1) & (tPeriodic < t2),
+                      (tPeriodic > t2) & (tPeriodic < t3), tPeriodic > t3]
+        choices = [1.0, 1.0 + zMax**2 / (2 * self.__L0**2) - zMax**2 * np.cos(2 * wa * (tPeriodic - t1)) / (
+            2 * self.__L0**2), 1.0, 1.0 + zMax**2 / (2 * self.__L0**2) - zMax**2 * np.cos(2 * wa * (tPeriodic - t3)) / (2 * self.__L0**2)]
+        beta = v / sc.c
+        gamma = 1 / np.sqrt(1 - beta**2)
+        prefactor = sc.e * self.__B0 / (sc.m_e * gamma)
+        return np.select(conditions, choices, default=0.0) * prefactor
