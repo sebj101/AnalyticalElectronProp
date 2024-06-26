@@ -20,10 +20,9 @@ class CircularWaveguide:
         A: float representing the amplitude of the mode
         '''
         kc = 1.841 / self.wgR
-        if rho > self.wgR:
-            return 0
-        else:
-            return (A / (kc * rho)) * j1(kc * rho) * np.cos(phi)
+        conditions = [rho > self.wgR, rho <= self.wgR]
+        choices = [0.0, (A / (kc * rho)) * j1(kc * rho) * np.cos(phi)]
+        return np.select(conditions, choices)
 
     def EFieldTE11Phi_1(self, rho: float, phi: float, A: float):
         '''Calculate the radial electric field for the TE11 mode
@@ -35,10 +34,21 @@ class CircularWaveguide:
         A: float representing the amplitude of the mode
         '''
         kc = 1.841 / self.wgR
-        if rho > self.wgR:
-            return 0
-        else:
-            return -A * jvp(1, kc * rho, 1) * np.sin(phi)
+        conditions = [rho > self.wgR, rho <= self.wgR]
+        choices = [0.0, -A * jvp(1, kc * rho, 1) * np.sin(phi)]
+        return np.select(conditions, choices)
+
+    def EFieldTE11Z(self, rho, phi, A):
+        """
+        Calculate the axial electric field for the TE11 mode
+
+        Parameters:
+        ----------
+        rho: float representing the radial position
+        phi: float representing the azimuthal position
+        A: float representing the amplitude of the mode
+        """
+        return np.zeros_like(rho)
 
     def EFieldTE11_1(self, rho, phi, A):
         '''Calculate the electric field vector for mode 1 in Cartesian coordinates
@@ -51,7 +61,9 @@ class CircularWaveguide:
         '''
 
         return np.array([self.EFieldTE11Rho_1(rho, phi, A) * np.cos(phi) - self.EFieldTE11Phi_1(rho, phi, A) * np.sin(phi),
-                         self.EFieldTE11Rho_1(rho, phi, A) * np.sin(phi) + self.EFieldTE11Phi_1(rho, phi, A) * np.cos(phi), 0])
+                         self.EFieldTE11Rho_1(
+                             rho, phi, A) * np.sin(phi) + self.EFieldTE11Phi_1(rho, phi, A) * np.cos(phi),
+                         self.EFieldTE11Z(rho, phi, A)])
 
     def EFieldTE11Pos_1(self, pos, A):
         '''Calculate the electric field vector for mode 1 in Cartesian coordinates
@@ -77,10 +89,9 @@ class CircularWaveguide:
         '''
 
         kc = 1.841 / self.wgR
-        if rho > self.wgR:
-            return 0
-        else:
-            return (-A / (kc * rho)) * j1(kc * rho) * np.sin(phi)
+        conditions = [rho > self.wgR, rho <= self.wgR]
+        choices = [0.0, (-A / (kc * rho)) * j1(kc * rho) * np.sin(phi)]
+        return np.select(conditions, choices)
 
     def EFieldTE11Phi_2(self, rho: float, phi: float, A: float):
         '''Calculate the radial electric field for the TE11 mode
@@ -93,10 +104,9 @@ class CircularWaveguide:
         '''
 
         kc = 1.841 / self.wgR
-        if rho > self.wgR:
-            return 0
-        else:
-            return -A * jvp(1, kc * rho, 1) * np.cos(phi)
+        conditions = [rho > self.wgR, rho <= self.wgR]
+        choices = [0.0, -A * jvp(1, kc * rho, 1) * np.cos(phi)]
+        return np.select(conditions, choices)
 
     def EFieldTE11_2(self, rho, phi, A):
         '''Calculate the electric field vector for mode 2 in Cartesian coordinates
@@ -106,7 +116,9 @@ class CircularWaveguide:
         '''
 
         return np.array([self.EFieldTE11Rho_2(rho, phi, A) * np.cos(phi) - self.EFieldTE11Phi_2(rho, phi, A) * np.sin(phi),
-                        self.EFieldTE11Rho_2(rho, phi, A) * np.sin(phi) + self.EFieldTE11Phi_2(rho, phi, A) * np.cos(phi), 0])
+                        self.EFieldTE11Rho_2(
+                            rho, phi, A) * np.sin(phi) + self.EFieldTE11Phi_2(rho, phi, A) * np.cos(phi),
+                        self.EFieldTE11Z(rho, phi, A)])
 
     def EFieldTE11Pos_2(self, pos, A):
         '''Calculate the electric field vector for mode 2 in Cartesian coordinates
