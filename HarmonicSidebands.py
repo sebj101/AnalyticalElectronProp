@@ -4,11 +4,12 @@ import src.CircularWaveguide as cw
 import src.utils as utils
 import src.Particle as part
 import src.QTNMTraps as traps
+import src.CircularWaveguide as cw
+import src.SignalGeneration as siggen
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.constants as sc
 import scipy.signal as sig
-import src.CircularWaveguide as cw
 from scipy.optimize import fsolve
 
 
@@ -20,29 +21,11 @@ plt.rcParams.update({'font.size': 12})
 # Use Seaborn style
 plt.style.use('seaborn')
 
-
 wgRadius = 5e-3  # metres
 wg = cw.CircularWaveguide(wgRadius)
 
-# Integrate square of electric field over the cross-section of the waveguide
-xArray = np.linspace(-wgRadius, wgRadius, 50)
-yArray = np.linspace(-wgRadius, wgRadius, 50)
-E1Integral = 0.0
-E2Integral = 0.0
-for i in range(len(xArray)):
-    for j in range(len(yArray)):
-        E1Integral += np.linalg.norm(wg.EFieldTE11Pos_1(np.array(
-            [xArray[i], yArray[j], 0]), 1))**2 * (xArray[1] - xArray[0]) * (yArray[1] - yArray[0])
-        E2Integral += np.linalg.norm(wg.EFieldTE11Pos_2(np.array(
-            [xArray[i], yArray[j], 0]), 1))**2 * (xArray[1] - xArray[0]) * (yArray[1] - yArray[0])
-
-normFactor1 = 1 / np.sqrt(E1Integral)
-normFactor2 = 1 / np.sqrt(E2Integral)
-
 eKE = 30e3  # eV
-electron = part.Particle(eKE)
-v0 = electron.GetSpeed()    # m/s
-p0 = electron.GetMomentum()  # kg m/s
+startPos = np.array([1e-5, 0.0, 0.0])
 
 # Define trap parameters
 B0 = 1.0  # T
@@ -50,68 +33,33 @@ L0 = 0.2  # m
 # Define trap
 trap = traps.HarmonicTrap(B0, L0)
 
-array1 = np.array([[1, 1, 1], [2, 2, 2], [7, 8, 9], [4, 4, 4]])  # Shape (3, 3)
-array2 = np.array([[1, 1, 1], [2, 2, 2], [3, 2, 1], [4, 4, 4]])  # Shape (3, 3)
-dot_product = np.einsum('ij,ij->i', array1, array2)
-print(dot_product)
-
 # Plot pitch angle against zMax
 pitchAngleArray = np.linspace(86.0, 90.0, 50) * np.pi / 180.0
 zMaxArray = trap.CalcZMax(pitchAngleArray)
 mainbandPower = np.zeros(len(pitchAngleArray))
 sideband1Power = np.zeros(len(pitchAngleArray))
 sideband2Power = np.zeros(len(pitchAngleArray))
+
+zR = 0.05  # metres
+receiverPosition = np.array([0.0, 0.0, zR])
 for iP, pitchAngleInit in enumerate(pitchAngleArray):
-    sampleCoarsePeriod = 1e-9
-    sampleFinePeriod = 1e-10
-    timeFine = np.arange(0, 1e-6, sampleFinePeriod)
-    # For a given sample time we want to find the emission time of the signal
-    zR = 0.05  # metres
-    receiverPosition = np.array([0.0, 0.0, zR])
-    mu = utils.EquivalentMagneticMoment(p0, pitchAngleInit, B0)
+    # Generate the electron
+    electron = part.Particle(eKE, startPos, pitchAngle=pitchAngleInit)
+    v0 = electron.GetSpeed()    # m/s
+    p0 = electron.GetMomentum()  # kg m/s
 
-    teSolutions = np.zeros(len(timeFine))
-    for iT, T in enumerate(timeFine):
-        def func(te): return T - te - np.abs(zR -
-                                             trap.GetZPosTime(te, v0, pitchAngleInit)) / sc.c
-        teSolutions[iT] = fsolve(func, T)
+    digitizerSampleRate = 1e9  # Hz
+    fLO = trap.CalcOmega0(v0, pitchAngleInit) / \
+        (2 * np.pi) - digitizerSampleRate / 4
+    noiseTemp = 0.0  # K
+    readout = siggen.Readout(digitizerSampleRate, fLO, noiseTemp)
+    theSignal = siggen.SignalGeneration(electron, trap, wg, 1e-6, readout,
+                                        receiverPosition)
 
-    # Now calculate the magnetic field for these emission times
-    BzTime = trap.GetBzTime(teSolutions, pitchAngleInit, v0)
-    pAngleTime = utils.PitchAngleFromField(BzTime, p0, mu)
-    phases = trap.GetCyclotronPhase(teSolutions, v0, pitchAngleInit)
-    eVels = utils.ElectronVelocity(v0, pAngleTime, phases)
-    ePos = np.array([1e-5 * np.ones(len(teSolutions)), np.zeros(
-        len(teSolutions)), trap.GetZPosTime(teSolutions, v0, pitchAngleInit)])
-    posFixed = np.array([1e-5, 0.0, 0.0])
-
-    # Now do some actual waveguide calculations
-    Z = wg.CalcTE11Impedance(trap.CalcOmega0(v0, pitchAngleInit))
-    # Calculate an amplitude
-    wgField1 = wg.EFieldTE11Pos_1(ePos, normFactor1)
-    wgField2 = wg.EFieldTE11Pos_2(ePos, normFactor1)
-    A1 = -sc.e * np.einsum('ij,ij->j', wgField1, eVels) * -Z / 2
-    A2 = -sc.e * np.einsum('ij,ij->j', wgField2, eVels) * -Z / 2
-    print(f"A1 shape: {A1.shape}")
-    fLO = trap.CalcOmega0(v0, pitchAngleInit) / (2 * np.pi) - \
-        (1 / sampleCoarsePeriod) / 4
-    A1 *= utils.LOOutput(timeFine, fLO)
-    A2 *= utils.LOOutput(timeFine, fLO)
-    # Apply a low pass filter to the data
-    cutoffFreq = (1 / sampleCoarsePeriod) / 2
-    filterOrder = 5
-    A1 = utils.ButterLowPassFilter(A1, cutoffFreq, 1 / sampleFinePeriod,
-                                   filterOrder)
-    A2 = utils.ButterLowPassFilter(A2, cutoffFreq, 1 / sampleFinePeriod,
-                                   filterOrder)
-    # Keep overy 10th element
-    A1 = A1[::10]
-    A2 = A2[::10]
-
-    fA1, PowerA1 = sig.periodogram(A1, fs=1 / sampleCoarsePeriod, window='boxcar',
-                                   scaling='spectrum')
-    fA2, PowerA2 = sig.periodogram(A2, fs=1 / sampleCoarsePeriod, window='boxcar',
-                                   scaling='spectrum')
+    fA1, PowerA1 = sig.periodogram(theSignal.amp1, fs=digitizerSampleRate,
+                                   window='boxcar', scaling='spectrum')
+    fA2, PowerA2 = sig.periodogram(theSignal.amp2, fs=digitizerSampleRate,
+                                   window='boxcar', scaling='spectrum')
 
     thisMainband = 0.0
     thisSideband1 = 0.0
