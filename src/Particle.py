@@ -14,18 +14,21 @@ class Particle:
     pitch angle
     """
 
-    def __init__(self, ke, q=-sc.e, mass=sc.m_e, pitchAngle=np.pi/2) -> None:
+    def __init__(self, ke, startPos: np.ndarray, q=-sc.e, mass=sc.m_e,
+                 pitchAngle=np.pi/2) -> None:
         """
         Constructor for Particle class
 
         Parameters:
         ----------
         ke: float representing the initial kinetic energy in eV
+        startPos: 3-vector representing the initial position of the particle
         q: float representing the charge of the particle in C
         mass: float representing the mass of the particle in kg
         pitchAngle: float representing the pitch angle of the particle in radians
         """
         self.__ke = ke
+        self.__pos = startPos
         self.__q = q
         self.__mass = mass
         self.__pitchAngle = pitchAngle
@@ -59,3 +62,9 @@ class Particle:
         Get the pitch angle of the particle in radians
         """
         return self.__pitchAngle
+
+    def GetPosition(self):
+        """
+        Get the position of the particle
+        """
+        return self.__pos
