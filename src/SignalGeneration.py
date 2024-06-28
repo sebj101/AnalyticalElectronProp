@@ -130,6 +130,15 @@ class SignalGeneration:
         wgField2 = self.__wg.EFieldTE11Pos_2(ePosRet, normFactor)
         self.amp1 = -sc.e * np.einsum('ij,ij->j', wgField1, eVelRet) * -Z / 2
         self.amp2 = -sc.e * np.einsum('ij,ij->j', wgField2, eVelRet) * -Z / 2
+
+        # Now add some noise to the signals
+        sigmaNoise = np.sqrt(sc.k * self.__readout.GetNoiseTemp()
+                             * (self.__readout.GetSampleRate() * 10.0) / 2)
+        self.amp1 += np.random.normal(0, sigmaNoise,
+                                      len(timeFine)) * np.sqrt(Z)
+        self.amp2 += np.random.normal(0, sigmaNoise,
+                                      len(timeFine)) * np.sqrt(Z)
+
         # Downmix with local oscillator
         self.amp1 *= self.__readout.GetLOOutput(timeFine)
         self.amp2 *= self.__readout.GetLOOutput(timeFine)
