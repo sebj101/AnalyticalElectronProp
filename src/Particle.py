@@ -68,3 +68,15 @@ class Particle:
         Get the position of the particle
         """
         return self.__pos
+
+    def GetMass(self):
+        """
+        Get the mass of the particle in kg
+        """
+        return self.__mass
+
+    def GetEnergy(self):
+        """
+        Get the energy of the particle in eV
+        """
+        return self.__ke
