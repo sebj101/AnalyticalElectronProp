@@ -99,16 +99,34 @@ class SignalGeneration:
         normFactor = self.__wg.CalcNormalisationFactor()
         v0 = self.__electron.GetSpeed()     # m/s
         p0 = self.__electron.GetMomentum()  # kg m/s
+        EJoules = self.__electron.GetEnergy() * sc.e + \
+            self.__electron.GetMass() * sc.c**2  # Total energy in Joules
         initialPos = electron.GetPosition()
         paInit = self.__electron.GetPitchAngle()  # Pitch angle in radians
         magMomentInit = utils.EquivalentMagneticMoment(
             p0, paInit, self.__trap.GetBzPosition(np.array([0.0, 0.0, 0.0])))
+        # Calculate the Larmor power
+        pLarmor = sc.e**2 * (v0 / sc.c)**2 * np.sin(paInit)**2 * \
+            self.__trap.CalcOmega0(v0, paInit)**2 / \
+            (6 * np.pi * sc.epsilon_0 * sc.c)
+        print(f"Radiated power: {pLarmor * 1e15:.3f} fW")
 
         # Given the motion of the particle we want to calculate a list of
         # retarded times
         # Initially we want to sample at 10 times the digitizer rate
         timeFine = np.arange(
             0, self.__t, 1 / (10 * self.__readout.GetSampleRate()))
+
+        # Calculate the electron speed as a function of time
+        vTime = np.zeros_like(timeFine)
+        deltaT = timeFine[1] - timeFine[0]
+        for iT, T in enumerate(timeFine):
+            # Calculate the speed from the energy in joules
+            gammaTmp = EJoules / (self.__electron.GetMass() * sc.c**2)
+            vTmp = np.sqrt(1 - 1 / gammaTmp**2) * sc.c
+            vTime[iT] = vTmp
+            EJoules -= pLarmor * deltaT
+
         tRet = np.zeros_like(timeFine)
         if usefsolve:
             for iT, T in enumerate(timeFine):
@@ -136,10 +154,10 @@ class SignalGeneration:
             tRet = timeFine - OffsetSine(timeFine, *popt)
 
         # We ultimately need the electron velocity and position at these times
-        BzRet = self.__trap.GetBzTime(tRet, paInit, v0)
+        BzRet = self.__trap.GetBzTime(tRet, paInit, vTime)
         paRet = utils.PitchAngleFromField(BzRet, p0, magMomentInit)
-        phasesRet = self.__trap.GetCyclotronPhase(tRet, v0, paInit)
-        eVelRet = utils.ElectronVelocity(v0, paRet, phasesRet)
+        phasesRet = self.__trap.GetCyclotronPhase(tRet, vTime, paInit)
+        eVelRet = utils.ElectronVelocity(vTime, paRet, phasesRet)
 
         ePosRet = np.array([initialPos[0] * np.ones_like(tRet),
                             initialPos[1] * np.ones_like(tRet),
