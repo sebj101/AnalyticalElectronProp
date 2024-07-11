@@ -105,3 +105,13 @@ class BaseTrap(ABC):
             float: Gradient of the magnetic field in Tesla per metre
         """
         return self.__gradB
+
+    def SetGradB(self, gradB):
+        """
+        Setter for the gradient of the magnetic field
+
+        Parameters:
+        -----------
+            gradB (float): Gradient of the magnetic field in Tesla per metre
+        """
+        self.__gradB = gradB

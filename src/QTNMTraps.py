@@ -36,7 +36,7 @@ class HarmonicTrap(BaseTrap):
         """
         self.__B0 = B0
         self.__L0 = L0
-        self.__gradB = gradB
+        self.SetGradB(gradB)
 
     def CalcZMax(self, pitchAngle):
         """
