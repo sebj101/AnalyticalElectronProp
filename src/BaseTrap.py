@@ -12,7 +12,13 @@ from abc import ABC, abstractmethod
 class BaseTrap(ABC):
     """
     Base class for electron traps
+
+    Attributes:
+    ----------
+    __gradB: float representing the gradient of the magnetic field
     """
+
+    __gradB = 0.0
 
     @abstractmethod
     def CalcZMax(self, pitchAngle):
@@ -89,3 +95,13 @@ class BaseTrap(ABC):
         v: float representing the speed of the electron in m/s
         pitchAngle: float representing the pitch angle in radians
         """
+
+    def GetGradB(self):
+        """
+        Getter for the gradient of the magnetic field
+
+        Returns:
+        --------
+            float: Gradient of the magnetic field in Tesla per metre
+        """
+        return self.__gradB

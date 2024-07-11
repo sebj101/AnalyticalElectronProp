@@ -24,7 +24,7 @@ class HarmonicTrap(BaseTrap):
     __B0 = 0.0
     __L0 = 0.0
 
-    def __init__(self, B0, L0):
+    def __init__(self, B0, L0, gradB=0.0):
         """
         Constructor for HarmonicTrap
 
@@ -32,9 +32,11 @@ class HarmonicTrap(BaseTrap):
         ----------
         B0: float representing the magnetic field strength at the trap centre
         L0: float representing the characteristic length of the trap
+        gradB: float representing the gradient of the magnetic field
         """
         self.__B0 = B0
         self.__L0 = L0
+        self.__gradB = gradB
 
     def CalcZMax(self, pitchAngle):
         """
@@ -135,13 +137,21 @@ class BathtubTrap(BaseTrap):
     __L0 = 0.0
     __L1 = 0.0
 
-    def __init__(self, B0, L0, L1):
+    def __init__(self, B0, L0, L1, gradB=0.0):
         """
         Constructor for BathtubTrap
+
+        Parameters:
+        ----------
+        B0: float representing the magnetic field strength at the trap centre
+        L0: float representing the field gradient of the trap
+        L1: float representing the length of the trap
+        gradB: float representing the radial gradient of the magnetic field in T/m
         """
         self.__B0 = B0
         self.__L0 = L0
         self.__L1 = L1
+        self.__gradB = gradB
 
     def CalcZMax(self, pitchAngle):
         """
