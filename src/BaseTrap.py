@@ -7,6 +7,9 @@ generic electron trap.
 S. Jones 19-06-24
 '''
 from abc import ABC, abstractmethod
+from src.Particle import Particle
+import src.utils as utils
+import numpy as np
 
 
 class BaseTrap(ABC):
@@ -115,3 +118,34 @@ class BaseTrap(ABC):
             gradB (float): Gradient of the magnetic field in Tesla per metre
         """
         self.__gradB = gradB
+
+    def CalcPositionTime(self, electron: Particle, t: float):
+        """
+        Calculate the position of the electron at a given time.
+        This takes into account both the axial motion and the grad-B motion.
+
+        Parameters:
+        -----------
+            electron (Particle): Particle object representing initial electron state
+            t (float): Time in seconds
+        """
+        initialPos = electron.GetPosition()
+        # Calculate the speed of the grad-B motion in m/s
+        omega0 = self.CalcOmega0(electron.GetSpeed(), electron.GetPitchAngle())
+        magMomentInit = utils.EquivalentMagneticMoment(electron.GetMomentum(),
+                                                       electron.GetPitchAngle(),
+                                                       self.GetBzPosition(initialPos))
+        vGradB = magMomentInit * self.GetGradB() / (electron.GetMass() * omega0)
+
+        # Calculate the frequency of the grad B motion
+        rho = np.sqrt(initialPos[0]**2 + initialPos[1]**2)
+        omegaGradB = vGradB / rho
+        # Phase of the grad B motion
+        phaseGradB = np.arctan2(initialPos[1], initialPos[0])
+        xPos = rho * np.cos(omegaGradB * t + phaseGradB)
+        yPos = rho * np.sin(omegaGradB * t + phaseGradB)
+
+        # Now get the z position
+        zPos = self.GetZPosTime(t, electron.GetSpeed(),
+                                electron.GetPitchAngle())
+        return np.array([xPos, yPos, zPos])
