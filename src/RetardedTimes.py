@@ -10,6 +10,7 @@ S. Jones 18/07/24
 import numpy as np
 import scipy.constants as sc
 from scipy.optimize import fsolve
+from scipy.interpolate import CubicSpline
 
 
 class TaylorSolver:
@@ -99,3 +100,41 @@ class TaylorSolver:
             return self.__FirstOrder()
         elif self.__order == 2:
             return self.__SecondOrder()
+
+
+class ForwardSolver:
+    """
+    Class utilising calculation of the advanced time to solve for the retarded
+    time
+    """
+
+    def __init__(self, receiverTimes, electronPositions, receiverPosition):
+        """
+        Constructor for ForwardSolver class
+
+        Parameters:
+        -----------
+            receiverTimes: Array of times at which the receiver is sampling
+            electronPositions: Array of electron positions at each time
+            receiverPosition: Position of the receiver (3D array)
+        """
+        self.__receiverTimes = receiverTimes
+        self.__electronPositions = electronPositions
+        self.__receiverPosition = receiverPosition
+
+        # Initially calculate distances between receiver and electron
+        d = np.zeros_like(self.__receiverTimes)
+        for i in range(len(self.__receiverTimes)):
+            d[i] = np.linalg.norm(
+                self.__receiverPosition - self.__electronPositions[:, i])
+
+        self.__tAdvanced = self.__receiverTimes + d / sc.c
+
+    def CalcTRet(self):
+        """
+        Calculate the retarded times by interpolating between advanced times
+        """
+
+        spl = CubicSpline(self.__tAdvanced,
+                          self.__receiverTimes, extrapolate=True)
+        return spl(self.__receiverTimes)
