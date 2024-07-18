@@ -3,7 +3,7 @@ SignalGeneration.py
 
 Module containing classes:
     - SignalGeneration: Class for generating signals from a particle in a trap
-    - Readout: Class describing some readout chain parameters 
+    - Readout: Class describing some readout chain parameters
 """
 
 import numpy as np
@@ -13,6 +13,7 @@ from src.Particle import Particle
 from src.CircularWaveguide import CircularWaveguide
 import scipy.constants as sc
 from scipy.optimize import fsolve, curve_fit
+import src.RetardedTimes as ret
 
 
 class Readout:
@@ -104,12 +105,12 @@ class SignalGeneration:
         initialPos = electron.GetPosition()
         paInit = self.__electron.GetPitchAngle()  # Pitch angle in radians
         magMomentInit = utils.EquivalentMagneticMoment(
-            p0, paInit, self.__trap.GetBzPosition(np.array([0.0, 0.0, 0.0])))
+            p0, paInit, self.__trap.GetBzPosition(initialPos))
+
         # Calculate the Larmor power
-        pLarmor = sc.e**2 * (v0 / sc.c)**2 * np.sin(paInit)**2 * \
-            self.__trap.CalcOmega0(v0, paInit)**2 / \
+        omega0 = self.__trap.CalcOmega0(v0, paInit)
+        pLarmor = sc.e**2 * (v0 / sc.c)**2 * np.sin(paInit)**2 * omega0**2 / \
             (6 * np.pi * sc.epsilon_0 * sc.c)
-        print(f"Radiated power: {pLarmor * 1e15:.3f} fW")
 
         # Given the motion of the particle we want to calculate a list of
         # retarded times
@@ -130,38 +131,22 @@ class SignalGeneration:
         tRet = np.zeros_like(timeFine)
         if usefsolve:
             for iT, T in enumerate(timeFine):
-                def func(te): return T - te - np.linalg.norm(self.__receiverPos - np.array([
-                    initialPos[0], initialPos[1], self.__trap.GetZPosTime(te, v0, paInit)[0]])) / sc.c
+                def func(te): return T - te - np.linalg.norm(self.__receiverPos -
+                                                             self.__trap.CalcPositionTime(self.__electron, te)) / sc.c
                 tRet[iT] = fsolve(func, T)
         else:
-            # Try and get an analytical solution to the retarded time
-            emitTimes = np.arange(0, 1e-7, 5e-10)
-            arriveTimes = np.zeros_like(emitTimes)
-            for itEmit, tEmit in enumerate(emitTimes):
-                arriveTimes[itEmit] = tEmit + np.linalg.norm(self.__receiverPos - np.array(
-                    [initialPos[0], initialPos[1], self.__trap.GetZPosTime(tEmit, v0, paInit)])) / sc.c
-
-            # Now fit a sine wave to the data
-            def OffsetSine(x, A, omega, phi, y0):
-                return A * np.sin(omega * x + phi) + y0
-
-            AGuess = self.__trap.CalcZMax(paInit) / sc.c
-            omegaGuess = self.__trap.CalcOmegaAxial(paInit, v0)
-            y0Guess = np.linalg.norm(self.__receiverPos) / sc.c
-            popt, __ = curve_fit(OffsetSine, arriveTimes,
-                                 arriveTimes - emitTimes,
-                                 p0=[AGuess, omegaGuess, 0.0, y0Guess])
-            tRet = timeFine - OffsetSine(timeFine, *popt)
+            # Use the interpolation of advanced times
+            solver = ret.ForwardSolver(timeFine, self.__trap.CalcPositionTime(self.__electron, timeFine),
+                                       self.__receiverPos)
+            tRet = solver.CalcTRet()
 
         # We ultimately need the electron velocity and position at these times
         BzRet = self.__trap.GetBzTime(tRet, paInit, vTime)
         paRet = utils.PitchAngleFromField(BzRet, p0, magMomentInit)
         phasesRet = self.__trap.GetCyclotronPhase(tRet, vTime, paInit)
-        eVelRet = utils.ElectronVelocity(vTime, paRet, phasesRet)
 
-        ePosRet = np.array([initialPos[0] * np.ones_like(tRet),
-                            initialPos[1] * np.ones_like(tRet),
-                            self.__trap.GetZPosTime(tRet, v0, paInit)])
+        eVelRet = utils.ElectronVelocity(vTime, paRet, phasesRet)
+        ePosRet = self.__trap.CalcPositionTime(self.__electron, tRet)
 
         # Do waveguide calculations for the TE11 mode(s)
         # Calculate the impedance of the waveguide mode
