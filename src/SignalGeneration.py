@@ -76,7 +76,7 @@ class Readout:
 class SignalGeneration:
     def __init__(self, electron: Particle, trap: BaseTrap, wg: CircularWaveguide,
                  tSignal: float, readout: Readout, receiverPos: np.ndarray,
-                 usefsolve: bool = True):
+                 usefsolve: bool = False):
         """
         Constructor for SignalGeneration class
 
@@ -132,7 +132,7 @@ class SignalGeneration:
         if usefsolve:
             for iT, T in enumerate(timeFine):
                 def func(te): return T - te - np.linalg.norm(self.__receiverPos -
-                                                             self.__trap.CalcPositionTime(self.__electron, te)) / sc.c
+                                                             self.__trap.CalcPositionTime(self.__electron, te)[:, 0]) / sc.c
                 tRet[iT] = fsolve(func, T)
         else:
             # Use the interpolation of advanced times
