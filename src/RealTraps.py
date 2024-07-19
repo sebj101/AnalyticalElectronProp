@@ -92,6 +92,43 @@ class CoilField():
         return np.array([BRho * pos[0] / rho, BRho * pos[1] / rho, BZ])
 
 
+class RealBathtubField():
+    """
+    Class representing a realistic bathtub field centred at z = 0
+    """
+
+    def __init__(self, coilRadius: float, coilCurrent: float, trapLength: float,
+                 bkgField: float):
+        """
+        Constructor for RealBathtubField
+
+        Parameters:
+        -----------
+            coilRadius (float): Radius of the coil in meters
+            coilCurrent (float): Current in the coil in Amperes
+            trapLength (float): Length of the trap in meters
+            bkgField (float): Background field in Tesla
+        """
+
+        self.__bkg = bkgField
+        self.__coil1 = CoilField(coilRadius, coilCurrent, -trapLength / 2.0)
+        self.__coil2 = CoilField(coilRadius, coilCurrent, trapLength / 2.0)
+
+    def BFieldAtPoint(self, pos):
+        """
+        Calculate magnetic field vector at a given position
+
+        Parameters:
+        -----------
+            pos (np.array): Position vector in meters
+
+        Returns:
+        --------
+            np.array: Magnetic field vector in Tesla
+        """
+        return self.__coil1.BFieldAtPoint(pos) + self.__coil2.BFieldAtPoint(pos) + np.array([0.0, 0.0, self.__bkg])
+
+
 class RealHarmonicTrap():
     """
     Class representing a real harmonic trap
