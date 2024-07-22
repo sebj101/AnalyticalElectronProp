@@ -94,7 +94,8 @@ class CoilField():
 
 class RealBathtubField():
     """
-    Class representing a realistic bathtub field centred at z = 0
+    Class representing a realistic bathtub field centred at z = 0.
+    The field is produced by two current loops at z = -L/2 and z = L/2.
     """
 
     def __init__(self, coilRadius: float, coilCurrent: float, trapLength: float,
@@ -134,7 +135,7 @@ class RealHarmonicTrap():
     Class representing a real harmonic trap
 
     Presenting this with an electron position should output the correct analytic
-    harmonic trap
+    harmonic trap.
     """
 
     def __init__(self, coilRadius: float, coilCurrent: float, bkgField: float):
@@ -147,5 +148,19 @@ class RealHarmonicTrap():
             coilCurrent (float): Current in the coil in Amperes
         """
 
-        self.__rCoil = coilRadius
-        self.__iCoil = coilCurrent
+        self.__coil1 = CoilField(coilRadius, coilCurrent, 0.0)
+        self.__bkg = bkgField
+
+    def BFieldAtPoint(self, pos):
+        """
+        Calculate magnetic field vector at a given position.
+
+        Parameters:
+        -----------
+            pos (np.array): Position vector in meters
+
+        Returns:
+        --------
+            np.array: Magnetic field vector in Tesla
+        """
+        return np.array([0.0, 0.0, self.__bkg]) - self.__coil1.BFieldAtPoint(pos)
