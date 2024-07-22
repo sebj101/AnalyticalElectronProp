@@ -16,8 +16,36 @@ class RealBaseTrap(ABC):
     """
     Base class for realistic traps
 
-    Implementations of this class should give us
+    Implementations of this class should give us analytical traps
     """
+
+    @abstractmethod
+    def BFieldAtPoint(self, pos):
+        """
+        Calculate magnetic field vector at a given position
+
+        Parameters:
+        -----------
+            pos (np.array): Position vector in meters
+
+        Returns:
+        --------
+            np.array: Magnetic field vector in Tesla
+        """
+
+    @abstractmethod
+    def GetAnalyticTrap(self, pos):
+        """
+        Give an analytic representation of the trap at a given position
+
+        Parameters:
+        -----------
+            pos (np.array): Position vector in meters
+
+        Returns:
+        --------
+            BaseTrap: Analytic representation of the trap at the given position
+        """
 
 
 class CoilField():
@@ -92,7 +120,7 @@ class CoilField():
         return np.array([BRho * pos[0] / rho, BRho * pos[1] / rho, BZ])
 
 
-class RealBathtubField():
+class RealBathtubField(RealBaseTrap):
     """
     Class representing a realistic bathtub field centred at z = 0.
     The field is produced by two current loops at z = -L/2 and z = L/2.
@@ -130,7 +158,7 @@ class RealBathtubField():
         return self.__coil1.BFieldAtPoint(pos) + self.__coil2.BFieldAtPoint(pos) + np.array([0.0, 0.0, self.__bkg])
 
 
-class RealHarmonicTrap():
+class RealHarmonicTrap(RealBaseTrap):
     """
     Class representing a real harmonic trap
 
