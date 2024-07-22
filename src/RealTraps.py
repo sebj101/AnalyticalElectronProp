@@ -10,6 +10,8 @@ from abc import ABC, abstractmethod
 import numpy as np
 import scipy.constants as sc
 from scipy.special import ellipk, ellipe
+from scipy.optimize import curve_fit
+import src.QTNMTraps as qtnm
 
 
 class RealBaseTrap(ABC):
@@ -140,6 +142,8 @@ class RealBathtubField(RealBaseTrap):
         """
 
         self.__bkg = bkgField
+        self.__trapLength = trapLength
+        self.__coilRadius = coilRadius
         self.__coil1 = CoilField(coilRadius, coilCurrent, -trapLength / 2.0)
         self.__coil2 = CoilField(coilRadius, coilCurrent, trapLength / 2.0)
 
@@ -156,6 +160,57 @@ class RealBathtubField(RealBaseTrap):
             np.array: Magnetic field vector in Tesla
         """
         return self.__coil1.BFieldAtPoint(pos) + self.__coil2.BFieldAtPoint(pos) + np.array([0.0, 0.0, self.__bkg])
+
+    def GetAnalyticTrap(self, pos):
+        """
+        Give an analytic representation of the trap at a given position
+
+        Parameters:
+        -----------
+            pos (np.array): Position vector in meters
+
+        Returns:
+        --------
+            BathtubTrap: Analytic representation of the trap at the given position
+        """
+
+        # Get the field profile at the radial position of the electron
+        NPNTS = 400
+        zVals = np.linspace(-0.9 * self.__trapLength / 2.0,
+                            0.9 * self.__trapLength / 2.0, NPNTS)
+        BZVals = np.zeros(NPNTS)
+        for i, z in enumerate(zVals):
+            BZVals[i] = self.BFieldAtPoint(np.array([pos[0], pos[1], z]))[2]
+
+        # Now fit an analytic version of the field to the profile
+        def AnalyticBathtub(z, B0, L0, L1):
+            """
+            Analytic form of the bathtub trap field
+            """
+            conditions = [z < -L1 / 2,
+                          (z > -L1 / 2) & (z < L1 / 2), z > L1 / 2]
+            choices = [B0 * (1 + (z + L1 / 2)**2 / L0**2),
+                       B0, B0 * (1 + (z - L1 / 2)**2 / L0**2)]
+            return np.select(conditions, choices, default=0.0)
+
+        popt, __ = curve_fit(AnalyticBathtub, zVals, BZVals,
+                             p0=[np.min(BZVals), self.__coilRadius, self.__trapLength / 2])
+        B0Fit = popt[0]
+        L0Fit = popt[1]
+        L1Fit = popt[2]
+
+        # Now determine the gradient of the magnetic field at this radius
+        rhoArr = np.linspace(0.0, 0.98 * self.__coilRadius, 100)
+        BArr = np.zeros_like(rhoArr)
+        for i, rho in enumerate(rhoArr):
+            BArr[i] = np.linalg.norm(
+                self.BFieldAtPoint(np.array([rho, 0.0, 0.0])))
+
+        gradBArr = np.gradient(BArr, rhoArr)
+        electronRho = np.sqrt(pos[0]**2 + pos[1]**2)
+        gradB = np.interp(electronRho, rhoArr, gradBArr)
+
+        return qtnm.BathtubTrap(B0Fit, L0Fit, L1Fit, gradB)
 
 
 class RealHarmonicTrap(RealBaseTrap):
