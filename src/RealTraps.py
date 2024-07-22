@@ -68,10 +68,10 @@ class CoilField():
         --------
             np.array: Magnetic field vector in Tesla
         """
-        if rho / self.__rCoil < 1e-6:
-            return np.array([0.0, 0.0, self.__CentralField(pos[2])])
-
         rho = np.sqrt(pos[0]**2 + pos[1]**2)
+        if rho / self.__rCoil < 1e-6:
+            return np.array([0.0, 0.0, self.__OnAxisField(pos[2])])
+
         zRel = pos[2] - self.__zOff
 
         BCentral = self.__CentralField()
