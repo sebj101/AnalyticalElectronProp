@@ -230,7 +230,7 @@ class RealHarmonicTrap(RealBaseTrap):
             coilRadius (float): Radius of the coil in meters
             coilCurrent (float): Current in the coil in Amperes
         """
-
+        self.__coilRadius = coilRadius
         self.__coil1 = CoilField(coilRadius, coilCurrent, 0.0)
         self.__bkg = bkgField
 
@@ -247,3 +247,48 @@ class RealHarmonicTrap(RealBaseTrap):
             np.array: Magnetic field vector in Tesla
         """
         return np.array([0.0, 0.0, self.__bkg]) - self.__coil1.BFieldAtPoint(pos)
+
+    def GetAnalyticTrap(self, pos):
+        """
+        Calculate the analytic representation of the trap at a given position
+
+        Parameters:
+        -----------
+            pos (np.array): Position vector in meters
+
+        Returns:
+        --------
+            HarmonicTrap: Analytic representation of the trap at the position
+        """
+        # Get the field profile at the radial position of the electron
+        NPNTS = 50
+        zVals = np.linspace(-self.__coilRadius / 2.0,
+                            self.__coilRadius / 2.0, NPNTS)
+        BZVals = np.zeros(NPNTS)
+        for i, z in enumerate(zVals):
+            BZVals[i] = self.BFieldAtPoint(np.array([pos[0], pos[1], z]))[2]
+
+        # Now fit an analytic version of the field to the profile
+        def AnalyticHarmonic(z, L0):
+            """
+            Analytic form of the harmonic trap field.
+            Fix B0 to the minimum value of the field profile.
+            """
+            return np.min(BZVals) * (1 + z**2 / L0**2)
+
+        popt, __ = curve_fit(AnalyticHarmonic, zVals, BZVals,
+                             p0=[self.__coilRadius])
+        L0Fit = popt[0]
+
+        # Now determine the gradient of the magnetic field at this radius
+        rhoArr = np.linspace(0.0, 0.98 * self.__coilRadius, 100)
+        BArr = np.zeros_like(rhoArr)
+        for i, rho in enumerate(rhoArr):
+            BArr[i] = np.linalg.norm(
+                self.BFieldAtPoint(np.array([rho, 0.0, 0.0])))
+
+        gradBArr = np.gradient(BArr, rhoArr)
+        electronRho = np.sqrt(pos[0]**2 + pos[1]**2)
+        gradB = np.interp(electronRho, rhoArr, gradBArr)
+
+        return qtnm.HarmonicTrap(np.min(BZVals), L0Fit, gradB)
